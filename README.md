@@ -34,7 +34,7 @@ The contracts have been deployed as-is on a variety of chains.
 | Polygon |  |
 
 ## Documentation
-The pricer consists of a simple interface contract `Pricer` that calls it's `implementation` using a normal call. The `implementation` is an upgradable proxy with the actual pricing logic. This setup allows us to delete the state by setting the `Pricer` implementation to a new contract and maintain the state by upgrading the `implementation` proxy.
+The pricer consists of a simple interface contract `Pricer` that calls its `implementation` using a normal call. The `implementation` is an upgradable proxy with the actual pricing logic. This setup allows us to delete the state by setting the `Pricer` implementation to a new contract and maintain the state by upgrading the `implementation` proxy.
 
 ### Pricer
 The pricer contract is the interface contract that is never expected to change. It forwards all calls to its `implementation` which is initially the PricerHandler.
