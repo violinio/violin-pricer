@@ -2572,7 +2572,8 @@ library SimplePairPricer {
             token1 = pair.token0();
             (reserve0, reserve1) = (reserve1, reserve0);
         }
-        return (reserve0, token1, calculateAmountOut(amountIn, reserve0, reserve1), amountIn * reserve1 / reserve0);
+        uint256 amOutNoSlippage = reserve0 == 0 ? 0 : amountIn * reserve1 / reserve0;
+        return (reserve0, token1, calculateAmountOut(amountIn, reserve0, reserve1), amOutNoSlippage);
     }
 
     function getOutTokenAndAmount(IUniswapV2Pair pair, address tokenIn, uint256 amountIn) internal view returns (address tokenOther, uint256 amountOut, uint256 amountOutNoSlippage) {
@@ -2583,7 +2584,8 @@ library SimplePairPricer {
             token1 = pair.token0();
             (reserve0, reserve1) = (reserve1, reserve0);
         }
-        return (token1, calculateAmountOut(amountIn, reserve0, reserve1), amountIn * reserve1 / reserve0);
+        uint256 amOutNoSlippage = reserve0 == 0 ? 0 : amountIn * reserve1 / reserve0;
+        return (token1, calculateAmountOut(amountIn, reserve0, reserve1), amOutNoSlippage);
     }
 
 
@@ -3199,6 +3201,7 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
             (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(asset)
                 .getReserves();
             uint256 totalSupply = IUniswapV2Pair(asset).totalSupply();
+            if (totalSupply == 0) return 0;
             uint256 amount0 = (amount * reserve0) / totalSupply;
             uint256 amount1 = (amount * reserve1) / totalSupply;
             return
@@ -3256,12 +3259,12 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
 
                 uint256 usdValue = getTokenValue(outToken, outAmount);
                 uint256 usdValueNoSlippage = getTokenValue(outToken, outAmountNoSlippage);
-                weightedOut += usdValueNoSlippage * reserveIn;
-                totalUSD += usdValue;
+                weightedOut += usdValueNoSlippage * reserveIn; // without slippage
+                totalUSD += usdValue; // with slippage
                 totalTVLIn += reserveIn;
 
-                // Return early if we've iterated over 10x the input amount or we've iterated over an output amount over $1000.
-                if (totalTVLIn >= amount * 10 || totalUSD >= 1000 * 1e18) {
+                // Return early if we've iterated over 10x the input amount or we've iterated over an output amount over $10,000.
+                if (totalTVLIn >= amount * 10 || totalUSD >= 10000 * 1e18) {
                     return weightedOut / totalTVLIn;
                 }
             }

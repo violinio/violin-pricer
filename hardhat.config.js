@@ -85,6 +85,14 @@ module.exports = {
       url: "https://rpc.fuse.io",
       accounts: [`0x${PRIVATE_KEY}`],
     },
+    aurora: {
+      url: "https://mainnet.aurora.dev/",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
+    fusion: {
+      url: "https://mainnet.anyswap.exchange",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
     // TESTNETS
     avax_fuji: {
       url: "https://api.avax-test.network/ext/bc/C/rpc",

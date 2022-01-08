@@ -86,6 +86,7 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
             (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(asset)
                 .getReserves();
             uint256 totalSupply = IUniswapV2Pair(asset).totalSupply();
+            if (totalSupply == 0) return 0;
             uint256 amount0 = (amount * reserve0) / totalSupply;
             uint256 amount1 = (amount * reserve1) / totalSupply;
             return
@@ -143,8 +144,8 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
 
                 uint256 usdValue = getTokenValue(outToken, outAmount);
                 uint256 usdValueNoSlippage = getTokenValue(outToken, outAmountNoSlippage);
-                weightedOut += usdValueNoSlippage * reserveIn;
-                totalUSD += usdValue;
+                weightedOut += usdValueNoSlippage * reserveIn; // without slippage
+                totalUSD += usdValue; // with slippage
                 totalTVLIn += reserveIn;
 
                 // Return early if we've iterated over 10x the input amount or we've iterated over an output amount over $10,000.

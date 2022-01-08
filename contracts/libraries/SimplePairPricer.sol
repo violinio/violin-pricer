@@ -9,7 +9,8 @@ library SimplePairPricer {
             token1 = pair.token0();
             (reserve0, reserve1) = (reserve1, reserve0);
         }
-        return (reserve0, token1, calculateAmountOut(amountIn, reserve0, reserve1), amountIn * reserve1 / reserve0);
+        uint256 amOutNoSlippage = reserve0 == 0 ? 0 : amountIn * reserve1 / reserve0;
+        return (reserve0, token1, calculateAmountOut(amountIn, reserve0, reserve1), amOutNoSlippage);
     }
 
     function getOutTokenAndAmount(IUniswapV2Pair pair, address tokenIn, uint256 amountIn) internal view returns (address tokenOther, uint256 amountOut, uint256 amountOutNoSlippage) {
@@ -20,7 +21,8 @@ library SimplePairPricer {
             token1 = pair.token0();
             (reserve0, reserve1) = (reserve1, reserve0);
         }
-        return (token1, calculateAmountOut(amountIn, reserve0, reserve1), amountIn * reserve1 / reserve0);
+        uint256 amOutNoSlippage = reserve0 == 0 ? 0 : amountIn * reserve1 / reserve0;
+        return (token1, calculateAmountOut(amountIn, reserve0, reserve1), amOutNoSlippage);
     }
 
 
