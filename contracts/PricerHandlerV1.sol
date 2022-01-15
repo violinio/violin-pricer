@@ -12,6 +12,9 @@ import "@violinio/violin-vaults-contracts/contracts/interfaces/IVaultChef.sol";
 import "./libraries/SimplePairPricer.sol";
 import "./Pricer.sol";
 
+import "./interfaces/IBalancerV2Pool.sol";
+import "./interfaces/IBalancerV2Vault.sol";
+
 contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     /// @dev Used to load in pair.getAmountOut method.
@@ -35,14 +38,12 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
     /// @dev Forces usage of the specified pair for calculating the first step of the value calculation.
     mapping(address => IUniswapV2Pair) public overridenPairForToken;
 
-
     /// @dev Information about a coin being a stablecoin. Everything is eventually routed to a stablecoin.
     mapping(address => StableCoinInfo) public stablecoins;
 
     /// @dev Management roles
     bytes32 public constant SET_FACTORY_ROLE = keccak256("SET_FACTORY_ROLE");
-    bytes32 public constant SET_ASSET_ROLE =
-        keccak256("SET_ASSET_ROLE");
+    bytes32 public constant SET_ASSET_ROLE = keccak256("SET_ASSET_ROLE");
 
     /// @dev Utility contract that throws if the provided address is not a pair, used because simple try-catch is insufficient due to it still reverting on wrong return data (and I'm too lazy for a low-level call).
     PairChecker public pairChecker;
@@ -56,6 +57,14 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
         _setupRole(SET_ASSET_ROLE, _owner);
 
         pairChecker = new PairChecker();
+    }
+
+    function setPairChecker(PairChecker _pairChecker)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        pairChecker = _pairChecker;
+        emit PairCheckerSet(_pairChecker);
     }
 
     /// @notice Returns the dollar value of the `amount` of `asset` at the current spot price. Returned value is in 1e18.
@@ -93,24 +102,48 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
                 getTokenValue(token0, amount0) + getTokenValue(token1, amount1);
         } catch {}
 
+        try pairChecker.isBalancerPool(asset) returns (
+            address vault,
+            bytes32 poolId
+        ) {
+            (
+                address[] memory tokens,
+                uint256[] memory balances,
+
+            ) = IBalancerV2Vault(vault).getPoolTokens(poolId);
+            uint256 totalValue = 0;
+            uint256 totalSupply = IBalancerV2Pool(asset).totalSupply();
+            for (uint256 i = 0; i < tokens.length; i++) {
+                totalValue += getTokenValue(
+                    tokens[i],
+                    (amount * balances[i]) / totalSupply
+                );
+            }
+            return totalValue;
+        } catch {}
+
         // Finally handle the asset as if its a token
         return getTokenValue(asset, amount);
     }
 
-    function getTokenValue(address token, uint256 amount) internal view returns (uint256) {
+    function getTokenValue(address token, uint256 amount)
+        internal
+        view
+        returns (uint256)
+    {
         // Finish once we've reached a stablecoin.
         StableCoinInfo memory stableCoinInfo = stablecoins[token];
         if (stableCoinInfo.set) {
             return
                 stableCoinInfo.decimals == 18
                     ? amount
-                    : (amount * 1e18) / (10 ** stableCoinInfo.decimals);
+                    : (amount * 1e18) / (10**stableCoinInfo.decimals);
         }
 
         // Take a shortcut if we have manually set the first pair for this token.
         IUniswapV2Pair overridenPair = overridenPairForToken[token];
         if (address(overridenPair) != address(0)) {
-            (address outToken,, uint256 outAmountNoSlippage) = overridenPair
+            (address outToken, , uint256 outAmountNoSlippage) = overridenPair
                 .getOutTokenAndAmount(token, amount);
             return getTokenValue(outToken, outAmountNoSlippage);
         }
@@ -120,7 +153,11 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
     }
 
     /// @dev Get pairs, weight by token amount, stop after $1000 is aggregated.
-    function getDiscoveredTokenValue(address token, uint256 amount) internal view returns (uint256) {
+    function getDiscoveredTokenValue(address token, uint256 amount)
+        internal
+        view
+        returns (uint256)
+    {
         uint256 totalTVLIn = 0;
         uint256 totalUSD = 0;
         uint256 weightedOut = 0;
@@ -139,11 +176,18 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
                     continue;
                 }
 
-                (uint256 reserveIn, address outToken, uint256 outAmount, uint256 outAmountNoSlippage) = pair
-                    .getReserveInOutTokenAndAmount(token, amount);
+                (
+                    uint256 reserveIn,
+                    address outToken,
+                    uint256 outAmount,
+                    uint256 outAmountNoSlippage
+                ) = pair.getReserveInOutTokenAndAmount(token, amount);
 
                 uint256 usdValue = getTokenValue(outToken, outAmount);
-                uint256 usdValueNoSlippage = getTokenValue(outToken, outAmountNoSlippage);
+                uint256 usdValueNoSlippage = getTokenValue(
+                    outToken,
+                    outAmountNoSlippage
+                );
                 weightedOut += usdValueNoSlippage * reserveIn; // without slippage
                 totalUSD += usdValue; // with slippage
                 totalTVLIn += reserveIn;
@@ -179,7 +223,7 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
         returns (uint256)
     {
         uint256 decimals = IERC20Metadata(asset).decimals();
-        return getValue(asset, 10 ** decimals, metadata);
+        return getValue(asset, 10**decimals, metadata);
     }
 
     /// @notice Calls getPrice for all provided assets. Input parameters must be equal length.
@@ -192,7 +236,7 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
         uint256[] memory values = new uint256[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
             uint256 decimals = IERC20Metadata(assets[i]).decimals();
-            values[i] = getValue(assets[i], 10 ** decimals, metadata[i]);
+            values[i] = getValue(assets[i], 10**decimals, metadata[i]);
         }
         return values;
     }
@@ -225,7 +269,11 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
         onlyRole(SET_ASSET_ROLE)
     {
         require(!mainAssets.contains(_mainAsset), "!already added");
-        require(stablecoins[_mainAsset].set || address(overridenPairForToken[_mainAsset]) != address(0), "!Add as stablecoin or set pair with stablecoin first.");
+        require(
+            stablecoins[_mainAsset].set ||
+                address(overridenPairForToken[_mainAsset]) != address(0),
+            "!Add as stablecoin or set pair with stablecoin first."
+        );
         mainAssets.add(_mainAsset);
 
         emit MainAssetAdded(_mainAsset);
@@ -249,13 +297,14 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
         emit OverridenPairSet(asset, pair);
     }
 
-    function setStablecoin(address stablecoin, bool set) external onlyRole(SET_ASSET_ROLE) {
-        stablecoins[stablecoin] = StableCoinInfo(
-            {
-                set: set,
-                decimals: IERC20Metadata(stablecoin).decimals()
-            }
-        );
+    function setStablecoin(address stablecoin, bool set)
+        external
+        onlyRole(SET_ASSET_ROLE)
+    {
+        stablecoins[stablecoin] = StableCoinInfo({
+            set: set,
+            decimals: IERC20Metadata(stablecoin).decimals()
+        });
 
         emit StableCoinSet(stablecoin, set);
     }
@@ -286,11 +335,23 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
     event MainAssetRemoved(address indexed mainAsset);
     event OverridenPairSet(address indexed asset, IUniswapV2Pair indexed pair);
     event StableCoinSet(address indexed stablecoin, bool indexed set);
+    event PairCheckerSet(PairChecker indexed newPairChecker);
 }
 
 contract PairChecker {
     // Fallback-safe pair checker, needs to be called using try-catch.
     function isPair(address token) external view {
         IUniswapV2Pair(token).getReserves();
+    }
+
+    function isBalancerPool(address token)
+        external
+        view
+        returns (address vault, bytes32 poolId)
+    {
+        return (
+            IBalancerV2Pool(token).getVault(),
+            IBalancerV2Pool(token).getPoolId()
+        );
     }
 }

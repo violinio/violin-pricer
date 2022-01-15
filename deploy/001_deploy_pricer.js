@@ -13,8 +13,8 @@ const main = async function (hre) {
 
     // We get the contract to deploy
     const pricerHandlerV1 = await deploy("PricerHandlerV1", {
-        
-        from: managedDeployer.signer, 
+
+        from: managedDeployer.signer,
         proxy: {
             execute: {
                 init: {
@@ -26,11 +26,15 @@ const main = async function (hre) {
         log: true,
         deterministicDeployment: "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
     });
+
+    const PricerV1ContractFactory = await ethers.getContractFactory("PricerHandlerV1");
+    const pricerV1Contract = await PricerV1ContractFactory.attach(pricerHandlerV1.address);
+
     console.log("PricerHandlerV1 deployed to:", pricerHandlerV1.address);
 
     const pricer = await deploy("Pricer", {
-        from: managedDeployer.signer, 
-        log: true, 
+        from: managedDeployer.signer,
+        log: true,
         args: [signer.address],
         deterministicDeployment: "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
     });
@@ -41,9 +45,28 @@ const main = async function (hre) {
         await pricerContract.connect(signer).setImplementation(pricerHandlerV1.address);
         console.log("set pricer implementation to pricerHandlerV1");
     }
+
+    const pairChecker = await deploy("PairChecker", {
+        from: managedDeployer.signer,
+        log: true,
+        args: [],
+        deterministicDeployment: "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
+    });
+    console.log("pairChecker deployed to:", pairChecker.address);
+
+    if ((await pricerV1Contract.pairChecker()) !== pairChecker.address) {
+        await pricerV1Contract.connect(signer).setPairChecker(pairChecker.address);
+        console.log("Set pricerv1 pairchecker address");
+    }
+
     const chain = hre.network.name;
     try {
         await verify(hre, chain, pricer.address, [signer.address]);
+    } catch (error) {
+        console.log(error);
+    }
+    try {
+        await verify(hre, chain, pairChecker.address, []);
     } catch (error) {
         console.log(error);
     }
