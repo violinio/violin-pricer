@@ -24,7 +24,6 @@ const main = async function (hre) {
             },
         },
         log: true,
-        deterministicDeployment: "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
     });
 
     const PricerV1ContractFactory = await ethers.getContractFactory("PricerHandlerV1");
@@ -36,7 +35,6 @@ const main = async function (hre) {
         from: managedDeployer.signer,
         log: true,
         args: [signer.address],
-        deterministicDeployment: "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
     });
     console.log("Pricer deployed to:", pricer.address);
     const PricerContractFactory = await ethers.getContractFactory("Pricer");
@@ -46,18 +44,18 @@ const main = async function (hre) {
         console.log("set pricer implementation to pricerHandlerV1");
     }
 
-    const pairChecker = await deploy("PairChecker", {
-        from: managedDeployer.signer,
-        log: true,
-        args: [],
-        deterministicDeployment: "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
-    });
-    console.log("pairChecker deployed to:", pairChecker.address);
+    // const pairChecker = await deploy("PairChecker", {
+    //     from: managedDeployer.signer,
+    //     log: true,
+    //     args: [],
+    //     deterministicDeployment: "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
+    // });
+    // console.log("pairChecker deployed to:", pairChecker.address);
 
-    if ((await pricerV1Contract.pairChecker()) !== pairChecker.address) {
-        await pricerV1Contract.connect(signer).setPairChecker(pairChecker.address);
-        console.log("Set pricerv1 pairchecker address");
-    }
+    // if ((await pricerV1Contract.pairChecker()) !== pairChecker.address) {
+    //     await pricerV1Contract.connect(signer).setPairChecker(pairChecker.address);
+    //     console.log("Set pricerv1 pairchecker address");
+    // }
 
     const chain = hre.network.name;
     try {
@@ -65,11 +63,11 @@ const main = async function (hre) {
     } catch (error) {
         console.log(error);
     }
-    try {
-        await verify(hre, chain, pairChecker.address, []);
-    } catch (error) {
-        console.log(error);
-    }
+    // try {
+    //     await verify(hre, chain, pairChecker.address, []);
+    // } catch (error) {
+    //     console.log(error);
+    // }
 
     try {
         await verify(hre, chain, pricerHandlerV1.implementation, []);

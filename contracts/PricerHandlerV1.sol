@@ -89,7 +89,8 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
         }
 
         // Then we check if the asset is a pair
-        try pairChecker.isPair(asset) {
+        (bool success, ) = address(pairChecker).staticcall(abi.encodeWithSelector(PairChecker.isPair.selector, asset));
+        if (success) {
             address token0 = IUniswapV2Pair(asset).token0();
             address token1 = IUniswapV2Pair(asset).token1();
             (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(asset)
@@ -100,12 +101,11 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
             uint256 amount1 = (amount * reserve1) / totalSupply;
             return
                 getTokenValue(token0, amount0) + getTokenValue(token1, amount1);
-        } catch {}
-
-        try pairChecker.isBalancerPool(asset) returns (
-            address vault,
-            bytes32 poolId
-        ) {
+        }
+        
+        (success, ) = address(pairChecker).staticcall{gas: 100000}(abi.encodeWithSelector(PairChecker.isBalancerPool.selector, asset));
+        if (success) {
+            (address vault, bytes32 poolId) = pairChecker.isBalancerPool(asset); // double call but this is an exceptional flow anyways, and I like solidity's call safeguards.
             (
                 address[] memory tokens,
                 uint256[] memory balances,
@@ -120,14 +120,14 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
                 );
             }
             return totalValue;
-        } catch {}
+        }
 
-        // Finally handle the asset as if its a token
+        //Finally handle the asset as if its a token
         return getTokenValue(asset, amount);
     }
 
     function getTokenValue(address token, uint256 amount)
-        internal
+        public
         view
         returns (uint256)
     {
@@ -154,7 +154,7 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
 
     /// @dev Get pairs, weight by token amount, stop after $1000 is aggregated.
     function getDiscoveredTokenValue(address token, uint256 amount)
-        internal
+        public
         view
         returns (uint256)
     {
@@ -192,8 +192,8 @@ contract PricerHandlerV1 is IPricer, AccessControlEnumerableUpgradeable {
                 totalUSD += usdValue; // with slippage
                 totalTVLIn += reserveIn;
 
-                // Return early if we've iterated over 10x the input amount or we've iterated over an output amount over $10,000.
-                if (totalTVLIn >= amount * 10 || totalUSD >= 10000 * 1e18) {
+                // Return early if we've iterated over 1000x the input amount or we've iterated over an output amount over $10,000.
+                if (totalTVLIn >= amount * 1000 || totalUSD >= 10000 * 1e18) {
                     return weightedOut / totalTVLIn;
                 }
             }

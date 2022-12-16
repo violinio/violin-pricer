@@ -33,6 +33,10 @@ module.exports = {
         accounts: [`0x${PRIVATE_KEY}`],
       }
     },
+    eth: {
+      url: "https://rpc.ankr.com/eth",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
     poly: {
       url: "https://polygon-rpc.com/",
       accounts: [`0x${PRIVATE_KEY}`],
@@ -53,6 +57,10 @@ module.exports = {
       url: "https://forno.celo.org",
       accounts: [`0x${PRIVATE_KEY}`],
     },
+    doge: {
+      url: "https://rpc.dogechain.dog",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
     heco: {
       url: "https://http-mainnet-node.huobichain.com",
       accounts: [`0x${PRIVATE_KEY}`],
@@ -69,8 +77,16 @@ module.exports = {
       url: "https://harmony-0-rpc.gateway.pokt.network",
       accounts: [`0x${PRIVATE_KEY}`],
     },
+    heco: {
+      url: "https://http-mainnet.hecochain.com",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
     moonriver: {
       url: "https://rpc.moonriver.moonbeam.network",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
+    moonbeam: {
+      url: "https://rpc.api.moonbeam.network",
       accounts: [`0x${PRIVATE_KEY}`],
     },
     arbitrum: {
@@ -93,6 +109,18 @@ module.exports = {
       url: "https://mainnet.anyswap.exchange",
       accounts: [`0x${PRIVATE_KEY}`],
     },
+    emerald: {
+      url: "https://emerald.oasis.dev",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
+    metis: {
+      url: "https://andromeda.metis.io/",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
+    optimism: {
+      url: "https://mainnet.optimism.io",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
     // TESTNETS
     avax_fuji: {
       url: "https://api.avax-test.network/ext/bc/C/rpc",
@@ -104,6 +132,18 @@ module.exports = {
     },
     poly_mumbai: {
       url: "https://rpc-mumbai.maticvigil.com/",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
+    milkomeda: {
+      url: "https://rpc-mainnet-cardano-evm.c1.milkomeda.com",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
+    astar: {
+      url: "https://rpc.astar.network:8545",
+      accounts: [`0x${PRIVATE_KEY}`],
+    },
+    evmos: {
+      url: "https://eth.bd.evmos.org:8545",
       accounts: [`0x${PRIVATE_KEY}`],
     },
   },
